@@ -2,6 +2,8 @@ import os
 import errno
 import sys
 from fuse import FUSE, FuseOSError, Operations
+import sqlite3
+import hashlib
 
 
 class Passthrough(Operations):
@@ -26,6 +28,20 @@ class Passthrough(Operations):
                                                         'st_uid'))
 
     def create(self, path, mode, fi=None):
+        connector = sqlite3.connect('files.db')
+        cursor = connector.cursor()
+        print("Path:", path)
+        hashed_path = self.generate_hash(path)
+        
+        # print("Hashed path:", hashed_path)
+        cursor.execute('''
+            INSERT INTO files (name, hashed_name, is_locked)
+            VALUES (?, ?, ?)
+        ''', (path, hashed_path, 0))
+
+        connector.commit()
+        connector.close()
+
         full_path = self._full_path(path)
         return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
 
@@ -61,6 +77,15 @@ class Passthrough(Operations):
             return written
 
     def unlink(self, path):
+        connector = sqlite3.connect('files.db')
+        cursor = connector.cursor()
+        cursor.execute('''
+            DELETE FROM files
+            WHERE name = ?
+        ''', (path,))
+        connector.commit()
+        connector.close()
+        
         primary_path = self._full_path(path)
         fallback_path = self._full_path(path, primary=False)
 
@@ -72,10 +97,35 @@ class Passthrough(Operations):
             os.unlink(fallback_path)
         else:
             raise FuseOSError(errno.ENOENT)
+        
+    def generate_hash(self, value):
+        hash_algorithm = hashlib.sha256()
+        value_bytes = str(value).encode('utf-8')
+        hash_algorithm.update(value_bytes)
+        hash_value = hash_algorithm.hexdigest()
+
+        return hash_value    
 
 def main(mountpoint, primary, fallback):
-    FUSE(Passthrough(primary, fallback), mountpoint, nothreads=True, foreground=True)
+    username = os.getlogin()
+    print("Username:", username)
 
+    connector = sqlite3.connect('files.db')
+    cursor = connector.cursor()
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS files (
+            "id" INTEGER PRIMARY KEY,
+            "name" TEXT,
+            "hashed_name" TEXT,       
+            "is_locked" INTEGER
+        )
+    ''')
+
+    connector.commit()
+    connector.close()
+
+    FUSE(Passthrough(primary, fallback), mountpoint, nothreads=True, foreground=True)
 
 if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2], sys.argv[3])
