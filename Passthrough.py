@@ -32,8 +32,6 @@ class Passthrough(Operations):
         cursor = connector.cursor()
         print("Path:", path)
         hashed_path = self.generate_hash(path)
-
-        # print("Hashed path:", hashed_path)
         cursor.execute('''
             INSERT INTO files (name, hashed_name, is_locked)
             VALUES (?, ?, ?)
