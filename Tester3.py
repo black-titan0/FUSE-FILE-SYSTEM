@@ -7,7 +7,7 @@ def list_files(directory):
     return [file for file in files if os.path.isfile(os.path.join(directory, file))]
 
 def write_huge_string_to_file(file_path, thread_id, repetitions):
-    huge_string = f'ThreadID: {thread_id}\n' * repetitions + "JOOOOOOOMMMAAAAAALLLLLLLL"
+    huge_string = f'ThreadID: {thread_id}\n' * repetitions
     with open(file_path, 'a') as file:
         file.write(huge_string)
 
