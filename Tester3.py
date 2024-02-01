@@ -32,7 +32,7 @@ def thread_function(thread_id, directory, repetitions):
         print(f"Thread {thread_id} encountered an error: {e}")
 
 # Set the number of threads (X), the directory path (Y), and repetitions
-num_threads = 1
+num_threads = 4
 directory_path = './mp'
 repetitions = 100000000
 
